@@ -240,14 +240,15 @@ lemma add_cancel (a b c : ExpRingTerm) : FreeExpRing.of a + FreeExpRing.of b = F
     -- have h3
 
 
+lemma my_mul_add (a b c : ExpRingTerm) : FreeExpRing.of (a * (b + c)) = FreeExpRing.of (a * b) + FreeExpRing.of (a * c) := by
+  apply Quotient.sound
+  apply ExpRingTerm.Rel.mul_add
 
 
 
-
-
-
-
-
+lemma my_add_mul (a b c : ExpRingTerm) : (FreeExpRing.of (a) + FreeExpRing.of (b)) * FreeExpRing.of (c) = FreeExpRing.of (a * c) + FreeExpRing.of (b * c) := by
+  apply Quotient.sound
+  apply ExpRingTerm.Rel.add_mul
 
 lemma zero_mul (a : ExpRingTerm) : FreeExpRing.of (ExpRingTerm.base 0 * a) = FreeExpRing.of (ExpRingTerm.base 0) :=
   by
@@ -255,17 +256,14 @@ lemma zero_mul (a : ExpRingTerm) : FreeExpRing.of (ExpRingTerm.base 0 * a) = Fre
       apply Quotient.sound
       apply ExpRingTerm.Rel.add_zero
 
-    have h1 : FreeExpRing.of (base 0) * (FreeExpRing.of a) = FreeExpRing.of (base 0) * (FreeExpRing.of a) + FreeExpRing.of (base 0) * (FreeExpRing.of a) := by
-      nth_rw 1 [← h]
-      apply Quotient.sound
-      apply ExpRingTerm.Rel.add_mul
+    have h1 : FreeExpRing.of (base 0) * (FreeExpRing.of a) = FreeExpRing.of (base 0) * (FreeExpRing.of a) + FreeExpRing.of (base 0) * (FreeExpRing.of a) + (FreeExpRing.of (base 0)):= by
 
-    have h2 : FreeExpRing.of (base 0) * (FreeExpRing.of a)  = FreeExpRing.of (base 0 * a) := by
-      rfl
+      sorry
+      -- nth_rw 1 [← h]
+      -- rw[my_add_zero]
+      -- apply Quotient.sound
+      -- apply ExpRingTerm.Rel.add
 
-    rw [← h2]
-
-    apply Quotient.sound
 
     -- apply ExpRingTerm.Rel.
 
