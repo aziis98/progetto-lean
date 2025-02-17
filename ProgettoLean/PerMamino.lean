@@ -41,8 +41,8 @@ instance : Exp ExpRingTerm where
 inductive ExpRingTerm.Rel : ExpRingTerm → ExpRingTerm → Prop
   -- base cases
   -- | base_eq (a b : ℤ) : (a = b) → ExpRingTerm.Rel (ExpRingTerm.base a) (ExpRingTerm.base b)
-  | add_fun (a b c d : ExpRingTerm) : ExpRingTerm.Rel a c → ExpRingTerm.Rel b d → ExpRingTerm.Rel (ExpRingTerm.add a b) (ExpRingTerm.add c d)
-  | mul_fun (a b c d : ExpRingTerm) : ExpRingTerm.Rel a c → ExpRingTerm.Rel b d → ExpRingTerm.Rel (ExpRingTerm.mul a b) (ExpRingTerm.mul c d)
+  | add_fun (a b c d : ExpRingTerm) : ExpRingTerm.Rel a c → ExpRingTerm.Rel b d → ExpRingTerm.Rel (a + b) (c + d)
+  | mul_fun (a b c d : ExpRingTerm) : ExpRingTerm.Rel a c → ExpRingTerm.Rel b d → ExpRingTerm.Rel (a * b) (c * d)
   | exp_fun (a b : ExpRingTerm) : ExpRingTerm.Rel a b → ExpRingTerm.Rel (ExpRingTerm.exp a) (ExpRingTerm.exp b)
 
   | refl (a : ExpRingTerm) : ExpRingTerm.Rel a a
@@ -60,11 +60,17 @@ inductive ExpRingTerm.Rel : ExpRingTerm → ExpRingTerm → Prop
 
   | add_inv (a : ExpRingTerm) : ExpRingTerm.Rel ((-a) + a) (ExpRingTerm.base 0)
 
-  | mul_one (a : ExpRingTerm) : ExpRingTerm.Rel ( a * (ExpRingTerm.base 1)) a
+  | mul_one (a : ExpRingTerm) : ExpRingTerm.Rel (a * (ExpRingTerm.base 1)) a
+  | one_mul (a : ExpRingTerm) : ExpRingTerm.Rel ((ExpRingTerm.base 1) * a) a
+
   | add_mul (a b c : ExpRingTerm) : ExpRingTerm.Rel ((a + b) * c) ((a * c) + (b * c))
   | mul_add (a b c : ExpRingTerm) : ExpRingTerm.Rel (a * (b + c)) ((a * b) + (a * c))
   | exp_add (a b : ExpRingTerm) : ExpRingTerm.Rel (exp (a + b)) ((exp a) * (exp b))
   | exp_zero : ExpRingTerm.Rel (exp (ExpRingTerm.base 0)) (ExpRingTerm.base 1)
+
+  | add_hom (a b : ℤ) : ExpRingTerm.Rel (ExpRingTerm.base (a + b)) ((ExpRingTerm.base a) + (ExpRingTerm.base b))
+  | mul_hom (a b : ℤ) : ExpRingTerm.Rel (ExpRingTerm.base (a * b)) ((ExpRingTerm.base a) * (ExpRingTerm.base b))
+
 
 instance : IsEquiv _ ExpRingTerm.Rel where
   refl := by
@@ -173,19 +179,30 @@ lemma my_add_assoc (a b c : FreeExpRing) : (a + b) + c = a + (b + c) := by
 
     exact Quotient.sound assoc
 
-lemma my_add_zero (a : ExpRingTerm) : FreeExpRing.of a + FreeExpRing.of (ExpRingTerm.base 0) = FreeExpRing.of a :=
+lemma my_add_zero (a : FreeExpRing) : a + FreeExpRing.of (ExpRingTerm.base 0) = a :=
   by
-    have h1 : FreeExpRing.of (a + ExpRingTerm.base 0) = FreeExpRing.of a := by
+    have h1 : a + FreeExpRing.of (ExpRingTerm.base 0) = a := by
+      let a' := a.exists_rep
+
+      rcases a' with ⟨a', ha⟩
+
+      rw [← ha]
+
       apply Quotient.sound
       apply ExpRingTerm.Rel.add_zero
 
     rw [← h1]
 
+    let a' := a.exists_rep
+
+    rcases a' with ⟨a', ha⟩
+
+    rw [← ha]
+
     apply Quotient.sound
     apply ExpRingTerm.Rel.add_zero
 
-lemma my_add_comm: ∀ (a b : FreeExpRing), a + b = b + a := by
-    intro a b
+lemma my_add_comm (a b : FreeExpRing) : a + b = b + a := by
     let a' := a.exists_rep
     let b' := b.exists_rep
 
@@ -210,7 +227,7 @@ lemma add_cancel (a b c : ExpRingTerm) : FreeExpRing.of a + FreeExpRing.of b = F
   by
     intro h
 
-    rw [← my_add_zero b, ← my_add_zero c]
+    rw [← my_add_zero (FreeExpRing.of b), ← my_add_zero (FreeExpRing.of c)]
 
     have h1 : FreeExpRing.of ((-a) + a) = FreeExpRing.of (base 0) := by
       apply Quotient.sound
@@ -236,47 +253,38 @@ lemma add_cancel (a b c : ExpRingTerm) : FreeExpRing.of a + FreeExpRing.of b = F
       rfl
     rw [h5]
     rw [my_add_comm]
-
     -- have h3
-
 
 lemma my_mul_add (a b c : ExpRingTerm) : FreeExpRing.of (a * (b + c)) = FreeExpRing.of (a * b) + FreeExpRing.of (a * c) := by
   apply Quotient.sound
   apply ExpRingTerm.Rel.mul_add
 
-
-
 lemma my_add_mul (a b c : ExpRingTerm) : (FreeExpRing.of (a) + FreeExpRing.of (b)) * FreeExpRing.of (c) = FreeExpRing.of (a * c) + FreeExpRing.of (b * c) := by
   apply Quotient.sound
   apply ExpRingTerm.Rel.add_mul
 
-lemma zero_mul (a : ExpRingTerm) : FreeExpRing.of (ExpRingTerm.base 0 * a) = FreeExpRing.of (ExpRingTerm.base 0) :=
+lemma my_zero_mul (a : ExpRingTerm) : FreeExpRing.of (ExpRingTerm.base 0 * a) = FreeExpRing.of (ExpRingTerm.base 0) :=
   by
     have h : FreeExpRing.of (ExpRingTerm.add (ExpRingTerm.base 0) (ExpRingTerm.base 0)) = FreeExpRing.of (ExpRingTerm.base (0)) := by
       apply Quotient.sound
       apply ExpRingTerm.Rel.add_zero
 
-    have h1 : FreeExpRing.of (base 0) * (FreeExpRing.of a) = FreeExpRing.of (base 0) * (FreeExpRing.of a) + FreeExpRing.of (base 0) * (FreeExpRing.of a) + (FreeExpRing.of (base 0)):= by
+    have h1 : FreeExpRing.of (base 0) * (FreeExpRing.of a) = FreeExpRing.of (base 0) * (FreeExpRing.of a) + FreeExpRing.of (base 0) * (FreeExpRing.of a) := by
 
-      sorry
+      nth_rw 1 [← my_add_zero (FreeExpRing.of (base 0))]
+      rw[my_add_mul]
+      rfl
+    nth_rw 1[← my_add_zero (FreeExpRing.of (base 0) * (FreeExpRing.of a))] at h1
+
+    apply add_cancel at h1
+    exact h1.symm
+
       -- nth_rw 1 [← h]
       -- rw[my_add_zero]
       -- apply Quotient.sound
       -- apply ExpRingTerm.Rel.add
 
-
     -- apply ExpRingTerm.Rel.
-
-
-
-
-
-
-
-
-
-
-
 
 instance : AddCommMonoid FreeExpRing where
   add_assoc := my_add_assoc
@@ -318,9 +326,56 @@ instance : AddCommMonoid FreeExpRing where
     dsimp
     let x' := x.exists_rep
     rcases x' with ⟨x', hx⟩
+
     have h1 : ⟦ExpRingTerm.base 0 * x'⟧ = 0 * x := by
       rw [← hx]
       rfl
+
+    rw [← hx]
+
+    apply my_zero_mul
+
+  nsmul_succ := by
+    intro n x
+
+    dsimp
+
+    let x' := x.exists_rep
+    rcases x' with ⟨x', hx⟩
+    rw [← hx]
+
+    have h  : FreeExpRing.of (ExpRingTerm.base (n + 1 : ℕ)) = FreeExpRing.of (ExpRingTerm.base n) + FreeExpRing.of (ExpRingTerm.base 1) := by
+      apply Quotient.sound
+      zify
+      apply ExpRingTerm.Rel.add_hom
+
+    rw [h]
+
+    have h1 : FreeExpRing.of x' = ⟦x'⟧ := by
+      rfl
+
+    rw [← h1]
+
+    rw [my_add_mul]
+    have h2: FreeExpRing.of (ExpRingTerm.base n) * FreeExpRing.of (x')= FreeExpRing.of (ExpRingTerm.base n * x') := by
+      rfl
+
+    rw [h2]
+
+    have h3 : FreeExpRing.of (ExpRingTerm.base 1 * x') = FreeExpRing.of x' := by
+      apply Quotient.sound
+      apply ExpRingTerm.Rel.one_mul
+
+    rw [h3]
+
+
+
+
+
+
+
+
+
 
     -- have h2 : ExpRingTerm.base 0 * x' = ExpRingTerm.base 0 := by
 
@@ -328,7 +383,6 @@ instance : AddCommMonoid FreeExpRing where
 
 
     -- have h2 : ⟦ExpRingTerm.base 0 * x'⟧ = 0 := by
-    sorry
 
 
 
