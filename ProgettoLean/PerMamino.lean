@@ -334,7 +334,6 @@ instance : AddCommMonoid FreeExpRing where
 
 
 
-
 -- have assoc : ExpRingTerm.Rel (a' + b' + c') (a' + (b' + c')) := ExpRingTerm.Rel.add_assoc a' b' c'
 
 -- exact Quotient.sound assoc
