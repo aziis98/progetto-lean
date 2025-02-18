@@ -6,8 +6,6 @@ import Mathlib.Analysis.Analytic.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Order.CauSeq.Completion
 
-
-
 inductive ExpRingTerm  where
   | base : ℤ → ExpRingTerm
   | exp : ExpRingTerm → ExpRingTerm
@@ -21,7 +19,7 @@ instance : Mul ExpRingTerm where
   mul := ExpRingTerm.mul
 
 instance : Neg ExpRingTerm where
-  neg x := ExpRingTerm.mul (ExpRingTerm.base (-1)) x
+  neg x :=  (ExpRingTerm.base (-1)) * x
 
 class Exp (α : Type u) where
   exp : α → α
@@ -44,6 +42,7 @@ inductive ExpRingTerm.Rel : ExpRingTerm → ExpRingTerm → Prop
   | add_fun (a b c d : ExpRingTerm) : ExpRingTerm.Rel a c → ExpRingTerm.Rel b d → ExpRingTerm.Rel (a + b) (c + d)
   | mul_fun (a b c d : ExpRingTerm) : ExpRingTerm.Rel a c → ExpRingTerm.Rel b d → ExpRingTerm.Rel (a * b) (c * d)
   | exp_fun (a b : ExpRingTerm) : ExpRingTerm.Rel a b → ExpRingTerm.Rel (ExpRingTerm.exp a) (ExpRingTerm.exp b)
+
 
   | refl (a : ExpRingTerm) : ExpRingTerm.Rel a a
   | symm (a b : ExpRingTerm) : ExpRingTerm.Rel a b → ExpRingTerm.Rel b a
@@ -149,6 +148,51 @@ instance : Exp FreeExpRing where
   )
 
 open ExpRingTerm
+
+lemma neg_scalar (a :ℤ ) :(- ExpRingTerm.base a).Rel (ExpRingTerm.base (- a)) := by
+
+  have h: (- ExpRingTerm.base a).Rel ((ExpRingTerm.base (-1)) * (ExpRingTerm.base a)):=by
+    apply ExpRingTerm.Rel.refl
+  apply ExpRingTerm.Rel.trans _  ((ExpRingTerm.base (-1)) * (ExpRingTerm.base a)) _
+  exact h
+  have h1: (ExpRingTerm.base (-a)).Rel (ExpRingTerm.base ((-1) * a)) := by
+    rw[neg_one_mul]
+    apply ExpRingTerm.Rel.refl
+  apply ExpRingTerm.Rel.trans _  (base (-1 * a)) _
+  apply ExpRingTerm.Rel.symm
+  apply ExpRingTerm.Rel.mul_hom
+  apply ExpRingTerm.Rel.symm
+  exact h1
+
+lemma my_neg_add (a: ExpRingTerm) (b: ExpRingTerm) : (-(a + b)).Rel ((-a)+ (-b)) := by
+  have h: (-(a + b)).Rel ((ExpRingTerm.base (-1))*(a + b)) := by
+    apply ExpRingTerm.Rel.refl
+  have h1: ExpRingTerm.Rel ((ExpRingTerm.base (-1)) * (a + b)) ((ExpRingTerm.base (-1)) * a + (ExpRingTerm.base (-1)) * b) := by
+    apply ExpRingTerm.Rel.mul_add
+  have h2: ExpRingTerm.Rel ((ExpRingTerm.base (-1)) * a + (ExpRingTerm.base (-1)) * b) ((-a) + (-b)) := by
+    apply ExpRingTerm.Rel.refl
+  apply ExpRingTerm.Rel.trans _ (base (-1) * (a + b)) _
+  exact h
+  apply ExpRingTerm.Rel.trans _ (base (-1) * a + base (-1) * b) _
+  exact h1
+  exact h2
+
+lemma neg_fun (a b :ExpRingTerm): a.Rel b → (-a).Rel (-b) := by
+  intro h
+  have h1: (-a).Rel ((ExpRingTerm.base (-1)) * a) := by
+    apply ExpRingTerm.Rel.refl
+  have h2: ((ExpRingTerm.base (-1)) * a).Rel ((ExpRingTerm.base (-1)) * b) := by
+    apply ExpRingTerm.Rel.mul_fun
+    apply ExpRingTerm.Rel.refl
+    exact h
+  have h3: ((ExpRingTerm.base (-1)) * b).Rel (-b) := by
+    apply ExpRingTerm.Rel.refl
+  apply ExpRingTerm.Rel.trans (-a) ((base (-1))*a) _
+  exact h1
+  apply ExpRingTerm.Rel.trans  ((base (-1))*a) ((base (-1))*b) _
+  exact h2
+  exact h3
+
 
 #check FreeExpRing.of (base 1) + (Exp.exp (FreeExpRing.of (ExpRingTerm.base 1)))
 
@@ -270,6 +314,16 @@ lemma add_cancel (a b c : ExpRingTerm) : FreeExpRing.of a + FreeExpRing.of b = F
     rw [h5]
     rw [my_add_comm]
     -- have h3
+lemma right_mul (a b c : ExpRingTerm) : a.Rel b→ (a*c).Rel (b*c) := by
+  intro h
+  apply Rel.mul_fun
+  exact h
+  apply Rel.refl
+lemma left_mul (a b c : ExpRingTerm) : a.Rel b→ (c*a).Rel (c*b) := by
+  intro h
+  apply Rel.mul_fun
+  apply Rel.refl
+  exact h
 
 lemma my_mul_add (a b c : ExpRingTerm) : FreeExpRing.of (a * (b + c)) = FreeExpRing.of (a * b) + FreeExpRing.of (a * c) := by
   apply Quotient.sound
@@ -433,8 +487,62 @@ instance : AddCommMonoid FreeExpRing where
 
 noncomputable def my_neg :FreeExpRing → FreeExpRing := fun x => FreeExpRing.of (- Quotient.out x)
 
+lemma my_neg_lemma1 (a' : ExpRingTerm) : my_neg (FreeExpRing.of a') = FreeExpRing.of (-a'):=
+  by
+    apply Quotient.sound
+    have h: Quotient.out (FreeExpRing.of (a')) ≈ a' := by
+      apply Quotient.exact
+      apply Quotient.out_eq
+    apply neg_fun
+    exact h
+lemma my_neg_lemma2 (a b c: ExpRingTerm) : (a.Rel b) → ((-a) + c).Rel (-b +c) := by
+  intro h
+  have h1: (-a).Rel (-b) := by
+    apply neg_fun
+    exact h
+  have h2: (-a + c).Rel (-b + c) := by
+    apply ExpRingTerm.Rel.add_fun
+    exact h1
+    apply ExpRingTerm.Rel.refl
+  exact h2
 
-instance : Ring FreeExpRing where
+
+
+
+
+lemma fuffa (a: ExpRingTerm) : ⟦a⟧ = FreeExpRing.of a := by
+  rfl
+
+lemma Quotient_mul (a b: FreeExpRing) : Quotient.out (a*b) ≈ (Quotient.out a)*(Quotient.out b)  := by
+  apply Quotient.exact
+  have h1: ⟦ Quotient.out (a*b)⟧ = a*b := by
+    apply Quotient.out_eq
+  have h2: (FreeExpRing.of (Quotient.out a)) * (FreeExpRing.of (Quotient.out b)) = a * b := by
+    have h3 : (FreeExpRing.of (Quotient.out a))=a := by
+      apply Quotient.out_eq
+    have h4 : (FreeExpRing.of (Quotient.out b))=b := by
+      apply Quotient.out_eq
+    rw[h3]
+    rw[h4]
+  rw[h1]
+  have h3: FreeExpRing.of (Quotient.out a) * FreeExpRing.of (Quotient.out b) =⟦Quotient.out a * Quotient.out b⟧  := by
+    rfl
+  rw[← h3 ]
+  rw[h2]
+
+
+
+
+noncomputable instance : Ring FreeExpRing where
+  zsmul_zero':= by
+    intro x
+    let x' := x.exists_rep
+    rcases x' with ⟨x', hx⟩
+    have h1 : ⟦ExpRingTerm.base 0 * x'⟧ = 0 * x := by
+      rw [← hx]
+      rfl
+    rw [← hx]
+    apply my_zero_mul
   left_distrib := by
     intro a b c
     rw[my_mul_add1]
@@ -486,11 +594,147 @@ instance : Ring FreeExpRing where
     apply ExpRingTerm.Rel.mul_one
   zsmul := fun n x => (FreeExpRing.of (ExpRingTerm.base n)) * x
   neg x:= my_neg x
+  neg_add_cancel:= by
+    intro a
+    let a' := a.exists_rep
+    rcases a' with ⟨a', ha⟩
+    rw[← ha]
+    dsimp
+    have h: my_neg ⟦a'⟧ =FreeExpRing.of (- a') := by
+      dsimp
+      have h1: ⟦a' ⟧=FreeExpRing.of a' := by
+        rfl
+      rw[h1]
+      rw[← my_neg_lemma1]
+
+    rw[h]
+    have h1: ⟦a' ⟧=FreeExpRing.of a' := by
+      rfl
+    rw[h1]
+    rw[← my_neg_lemma1]
+    apply Quotient.sound
+    have h2: Quotient.out (FreeExpRing.of a') ≈ a' := by
+      apply Quotient.exact
+      apply Quotient.out_eq
+    have h3:- Quotient.out (FreeExpRing.of a') + a' ≈ -a' +a' := by
+      apply my_neg_lemma2
+      exact h2
+    apply ExpRingTerm.Rel.trans _ ((-a') +a') _
+    exact h3
+    apply ExpRingTerm.Rel.add_inv
+  zsmul_succ':= by
+    intro n x
+    dsimp
+    let x' := x.exists_rep
+    rcases x' with ⟨x', hx⟩
+    rw [← hx]
+    have h1 : FreeExpRing.of (ExpRingTerm.base ((n + 1):ℕ )) * FreeExpRing.of x' = FreeExpRing.of (ExpRingTerm.base n) * FreeExpRing.of x' + FreeExpRing.of (ExpRingTerm.base 1) * FreeExpRing.of x' := by
+      have h1: FreeExpRing.of (ExpRingTerm.base (n + 1)) = FreeExpRing.of (ExpRingTerm.base n) + FreeExpRing.of (ExpRingTerm.base 1) := by
+        apply Quotient.sound
+        apply ExpRingTerm.Rel.add_hom
+      zify
+      rw[h1]
+      rw[my_add_mul1]
+    have h2: FreeExpRing.of (ExpRingTerm.base 1) * FreeExpRing.of x' = FreeExpRing.of x' := by
+      apply Quotient.sound
+      apply ExpRingTerm.Rel.one_mul
+    have h3: (FreeExpRing.of x')= ⟦x'⟧:=by
+      rfl
+    rw[← h3]
+    rw[h1]
+    rw[h2]
 
 
 
+  zsmul_neg':= by
+    intro n a
+    dsimp
+    let a' := a.exists_rep
+    rcases a' with ⟨a', ha⟩
+    rw [← ha]
+    have h1 : ⟦a'⟧ =FreeExpRing.of a' := by
+      rfl
+    rw[h1]
+    have h2: Int.negSucc n = -((n+1): ℤ  ) := by
+      rfl
+    rw[h2]
 
 
+    have h3 :FreeExpRing.of (base (-(n+1))) * FreeExpRing.of a'= FreeExpRing.of ((base (-(n+1) )) * a') :=by
+      rfl
+    rw[h3]
+    have h4: my_neg (FreeExpRing.of (base ↑(n + 1)) * FreeExpRing.of a')= FreeExpRing.of (-Quotient.out (FreeExpRing.of (base (n + 1)) * FreeExpRing.of a')):=by
+      rfl
+    rw[h4]
+    apply Quotient.sound
+    have h5: Quotient.out (FreeExpRing.of (base (n + 1))) ≈ base (n + 1) := by
+      apply Quotient.exact
+      apply Quotient.out_eq
+    have h6: - base (n+1) ≈ base (- (n+1)) := by
+      apply neg_scalar
+    have h7: -Quotient.out (FreeExpRing.of (base (n + 1))) * a' ≈ -base (n + 1) * a' := by
+      apply right_mul
+      apply neg_fun
+      exact h5
+    have h8: - base (n+1) * a' ≈ base (- (n+1)) * a' := by
+      apply right_mul
+      exact h6
+    apply ExpRingTerm.Rel.trans _ (-base ((↑n + 1)) * a') _
+    exact h8.symm
+    apply ExpRingTerm.Rel.trans _ (-Quotient.out (FreeExpRing.of (base (n + 1))) * a') _
+    apply h7.symm
+    have h9 :Quotient.out (FreeExpRing.of (base (↑n + 1)) * FreeExpRing.of a') ≈ Quotient.out (FreeExpRing.of (base (↑n + 1))) * Quotient.out (FreeExpRing.of a') :=by
+      apply Quotient_mul
+    have h10: Quotient.out (FreeExpRing.of a') ≈ a' := by
+      apply Quotient.exact
+      apply Quotient.out_eq
+    have h11: Quotient.out (FreeExpRing.of (base (↑n + 1))) * Quotient.out (FreeExpRing.of a') ≈ Quotient.out (FreeExpRing.of (base (↑n + 1))) * a' := by
+      apply left_mul
+      exact h10
+    have h12 :ExpRingTerm.Rel (- (Quotient.out (FreeExpRing.of (base (↑n + 1))) * Quotient.out (FreeExpRing.of a'))) (- (Quotient.out (FreeExpRing.of (base (↑n + 1))) * a')):= by
+      apply neg_fun
+      exact h11
+    apply ExpRingTerm.Rel.trans _ (-(Quotient.out (FreeExpRing.of (base (↑n + 1))) * Quotient.out (FreeExpRing.of a'))) _
+
+
+  /-  intro n x
+    dsimp
+    let x' := x.exists_rep
+    rcases x' with ⟨x', hx⟩
+    rw [← hx]
+    have h1 : FreeExpRing.of x'= ⟦x'⟧ := by
+      rfl
+    have h2 :Int.negSucc n  = -((n+1): ℕ ) := by
+      rfl
+    rw[← h1]
+    rw[h2]
+    have  h3: FreeExpRing.of (base (-↑(n + 1)))= my_neg (FreeExpRing.of (base (n + 1)) ):= by
+      apply Quotient.sound
+      have h3: Quotient.out (FreeExpRing.of (base (n + 1))) ≈ base (n + 1) := by
+        apply Quotient.exact
+        apply Quotient.out_eq
+      have h4: - base (n+1) ≈ base (- (n+1)) := by
+        apply neg_scalar
+      have h5: -Quotient.out (FreeExpRing.of (base (n + 1))) ≈ -base (n + 1):=by
+        apply neg_fun
+        exact h3
+      apply ExpRingTerm.Rel.trans _ (-base (n + 1)) _
+      exact h4.symm
+      exact h5.symm
+    rw[h3]
+    apply Quotient.sound
+    have h4: Quotient.out (FreeExpRing.of (base (n + 1))) ≈ base (n + 1) := by
+      apply Quotient.exact
+      apply Quotient.out_eq
+    have h5: (Quotient.out (FreeExpRing.of (base (↑n + 1)))) * x'≈ base (n + 1) * x' := by
+      apply right_mul
+      exact h4
+    have h6: - (Quotient.out (FreeExpRing.of (base (↑n + 1))) * x') ≈( - (base (n + 1) * x')) := by
+      apply neg_fun
+      exact h5
+    have h7 : (Quotient.out (FreeExpRing.of (base (↑n + 1))) * x') ≈ (Quotient.out (FreeExpRing.of (base (↑n + 1)) * FreeExpRing.of x')):=by
+      apply Quotient.exact
+    -/
 
 
 
