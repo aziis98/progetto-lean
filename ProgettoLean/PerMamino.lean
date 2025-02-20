@@ -139,6 +139,33 @@ instance : Mul FreeExpRing where
     exact ExpRingTerm.Rel.mul_fun a b c d h1 h2
   )
 
+open ExpRingTerm
+
+lemma neg_fun (a b :ExpRingTerm): a.Rel b → (-a).Rel (-b) := by
+  intro h
+  have h1: (-a).Rel ((ExpRingTerm.base (-1)) * a) := by
+    apply ExpRingTerm.Rel.refl
+  have h2: ((ExpRingTerm.base (-1)) * a).Rel ((ExpRingTerm.base (-1)) * b) := by
+    apply ExpRingTerm.Rel.mul_fun
+    apply ExpRingTerm.Rel.refl
+    exact h
+  have h3: ((ExpRingTerm.base (-1)) * b).Rel (-b) := by
+    apply ExpRingTerm.Rel.refl
+  apply ExpRingTerm.Rel.trans (-a) ((base (-1))*a) _
+  exact h1
+  apply ExpRingTerm.Rel.trans  ((base (-1))*a) ((base (-1))*b) _
+  exact h2
+  exact h3
+
+instance : Neg FreeExpRing where
+  neg := Quotient.lift (fun x => FreeExpRing.of (- x)) (by
+    intro a b h
+    dsimp
+    apply Quotient.sound
+    apply neg_fun
+    exact h
+  )
+
 instance : Exp FreeExpRing where
   exp := Quotient.lift (fun x => FreeExpRing.of (ExpRingTerm.exp x)) (by
     intro a b h
@@ -147,7 +174,6 @@ instance : Exp FreeExpRing where
     exact ExpRingTerm.Rel.exp_fun a b h
   )
 
-open ExpRingTerm
 
 lemma neg_scalar (a :ℤ ) :(- ExpRingTerm.base a).Rel (ExpRingTerm.base (- a)) := by
 
@@ -177,21 +203,6 @@ lemma my_neg_add (a: ExpRingTerm) (b: ExpRingTerm) : (-(a + b)).Rel ((-a)+ (-b))
   exact h1
   exact h2
 
-lemma neg_fun (a b :ExpRingTerm): a.Rel b → (-a).Rel (-b) := by
-  intro h
-  have h1: (-a).Rel ((ExpRingTerm.base (-1)) * a) := by
-    apply ExpRingTerm.Rel.refl
-  have h2: ((ExpRingTerm.base (-1)) * a).Rel ((ExpRingTerm.base (-1)) * b) := by
-    apply ExpRingTerm.Rel.mul_fun
-    apply ExpRingTerm.Rel.refl
-    exact h
-  have h3: ((ExpRingTerm.base (-1)) * b).Rel (-b) := by
-    apply ExpRingTerm.Rel.refl
-  apply ExpRingTerm.Rel.trans (-a) ((base (-1))*a) _
-  exact h1
-  apply ExpRingTerm.Rel.trans  ((base (-1))*a) ((base (-1))*b) _
-  exact h2
-  exact h3
 
 
 #check FreeExpRing.of (base 1) + (Exp.exp (FreeExpRing.of (ExpRingTerm.base 1)))
@@ -640,7 +651,7 @@ noncomputable instance : Ring FreeExpRing where
     apply Quotient.sound
     apply ExpRingTerm.Rel.mul_one
   zsmul := fun n x => (FreeExpRing.of (ExpRingTerm.base n)) * x
-  neg x:= my_neg x
+  neg x:= -x
   neg_add_cancel:= by
     intro a
     let a' := a.exists_rep
@@ -827,23 +838,16 @@ noncomputable instance : ERing FreeExpRing where
     rcases a' with ⟨a', ha⟩
     rw[← ha]
     rw[fuffa]
-    have h: my_neg ⟦a'⟧ =FreeExpRing.of (- a') := by
-      dsimp
-      have h1: ⟦a' ⟧=FreeExpRing.of a' := by
-        rfl
-      rw[h1]
-      rw[← my_neg_lemma1]
-    have h73: my_neg (FreeExpRing.of a') = -FreeExpRing.of (a') := by
+    have h: -(FreeExpRing.of a') = FreeExpRing.of (- a') := by
       rfl
-    rw[← h73]
-    rw[my_neg_lemma4]
-    rw[← h]
-    have h1: ⟦a' ⟧=FreeExpRing.of a' := by
-      rfl
+    rw[h]
+    have h1: FreeExpRing.of (-a') + FreeExpRing.of a' = FreeExpRing.of (-a' + a') := by
+      apply Quotient.sound
+      apply ExpRingTerm.Rel.refl
     rw[h1]
-    rw[my_neg_lemma1]
     apply Quotient.sound
     apply ExpRingTerm.Rel.add_inv
+
   nsmul_succ:= by
     intro n x
     dsimp
@@ -895,8 +899,32 @@ noncomputable instance : ERing FreeExpRing where
     rw[← h3]
     rw[h1]
     rw[h2]
-  zsmul_neg':= by
+  -- zsmul_neg':= by
+  --   intro n a
+
+
+  --   have h1: Int.negSucc n = -((n+1): ℤ  ) := by
+  --     rfl
+  --   rw[h1]
+  --   have h2: base (-(n+1))≈  - (base (n+1)) := by
+  --     apply Rel.symm
+  --     apply neg_scalar
+  --   have h3: FreeExpRing.of (base (-(n+1))) = FreeExpRing.of (- (base (n+1))) :=by
+  --     apply Quotient.sound
+  --     exact h2
+  --   dsimp
+  --   zify
+  --   rw[h3]
+  --   have h4: (FreeExpRing.of (-base ((n+1))) : FreeExpRing)  =(my_neg (FreeExpRing.of (base (n+1))) :FreeExpRing) := by
+  --     rw[← my_neg_lemma4]
+  --   rw[h4]
+
+  --   rw[← my_neg_lemma3]
+  --   rfl
+
+  zsmul_neg' := by
     intro n a
+    dsimp
     have h1: Int.negSucc n = -((n+1): ℤ  ) := by
       rfl
     rw[h1]
@@ -906,12 +934,9 @@ noncomputable instance : ERing FreeExpRing where
     have h3: FreeExpRing.of (base (-(n+1))) = FreeExpRing.of (- (base (n+1))) :=by
       apply Quotient.sound
       exact h2
-    dsimp
-    zify
     rw[h3]
+    rw[my_neg_lemma3]
     have h4: (FreeExpRing.of (-base ((n+1))) : FreeExpRing)  =(my_neg (FreeExpRing.of (base (n+1))) :FreeExpRing) := by
       rw[← my_neg_lemma4]
     rw[h4]
-
-    rw[← my_neg_lemma3]
-    rfl
+    zify
