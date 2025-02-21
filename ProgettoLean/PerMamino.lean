@@ -657,71 +657,16 @@ noncomputable instance : Ring FreeExpRing where
     let a' := a.exists_rep
     rcases a' with ⟨a', ha⟩
     rw[← ha]
-    dsimp
-    have h: my_neg ⟦a'⟧ =FreeExpRing.of (- a') := by
-      dsimp
-      have h1: ⟦a' ⟧=FreeExpRing.of a' := by
-        rfl
-      rw[h1]
-      rw[← my_neg_lemma1]
-
-    rw[h]
-    have h1: ⟦a' ⟧=FreeExpRing.of a' := by
-      rfl
-    rw[h1]
-    rw[← my_neg_lemma1]
     apply Quotient.sound
-    have h2: Quotient.out (FreeExpRing.of a') ≈ a' := by
-      apply Quotient.exact
-      apply Quotient.out_eq
-    have h3:- Quotient.out (FreeExpRing.of a') + a' ≈ -a' +a' := by
-      apply my_neg_lemma2
-      exact h2
-    apply ExpRingTerm.Rel.trans _ ((-a') +a') _
-    exact h3
-    apply ExpRingTerm.Rel.add_inv
-  zsmul_succ':= by
-    intro n x
-    dsimp
-    let x' := x.exists_rep
-    rcases x' with ⟨x', hx⟩
-    rw [← hx]
-    have h1 : FreeExpRing.of (ExpRingTerm.base ((n + 1):ℕ )) * FreeExpRing.of x' = FreeExpRing.of (ExpRingTerm.base n) * FreeExpRing.of x' + FreeExpRing.of (ExpRingTerm.base 1) * FreeExpRing.of x' := by
-      have h1: FreeExpRing.of (ExpRingTerm.base (n + 1)) = FreeExpRing.of (ExpRingTerm.base n) + FreeExpRing.of (ExpRingTerm.base 1) := by
-        apply Quotient.sound
-        apply ExpRingTerm.Rel.add_hom
-      zify
-      rw[h1]
-      rw[my_add_mul1]
-    have h2: FreeExpRing.of (ExpRingTerm.base 1) * FreeExpRing.of x' = FreeExpRing.of x' := by
-      apply Quotient.sound
-      apply ExpRingTerm.Rel.one_mul
-    have h3: (FreeExpRing.of x')= ⟦x'⟧:=by
-      rfl
-    rw[← h3]
-    rw[h1]
-    rw[h2]
+    have h1: (-a' + a') ≈ base 0 := by
+      apply ExpRingTerm.Rel.add_inv
+    apply ExpRingTerm.Rel.trans _ (-a' + a') _
+    apply ExpRingTerm.Rel.refl
+    exact h1
 
 
 
-  zsmul_neg':= by
-    intro n a
-    dsimp
-    have h1: Int.negSucc n = -((n+1): ℤ  ) := by
-      rfl
-    rw[h1]
-    have h2: base (-(n+1))≈  - (base (n+1)) := by
-      apply Rel.symm
-      apply neg_scalar
-    have h3: FreeExpRing.of (base (-(n+1))) = FreeExpRing.of (- (base (n+1))) :=by
-      apply Quotient.sound
-      exact h2
-    rw[h3]
-    rw[my_neg_lemma3]
-    have h4: (FreeExpRing.of (-base ((n+1))) : FreeExpRing)  =(my_neg (FreeExpRing.of (base (n+1))) :FreeExpRing) := by
-      rw[← my_neg_lemma4]
-    rw[h4]
-    zify
+
 
 class ERing (α : Type u) extends (Add α), (Mul α), (CommRing α) where
 
