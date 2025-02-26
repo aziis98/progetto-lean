@@ -1,10 +1,8 @@
-import Mathlib.MeasureTheory.Integral.IntervalIntegral
-import Mathlib.Analysis.Calculus.Deriv.ZPow
-import Mathlib.Analysis.NormedSpace.Pointwise
-import Mathlib.Analysis.SpecialFunctions.NonIntegrable
-import Mathlib.Analysis.Analytic.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Order.CauSeq.Completion
+import Mathlib.Algebra.Polynomial.AlgebraMap
+import Mathlib.RingTheory.Algebraic.Defs
+
 
 inductive ExpRingTerm  where
   | base : ℤ → ExpRingTerm
@@ -536,7 +534,7 @@ lemma my_one_mul (a : FreeExpRing) : (FreeExpRing.of (base 1)) * a = a := by
   exact h1
 
 
-noncomputable instance : Ring FreeExpRing where
+instance : Ring FreeExpRing where
   zsmul_zero':= by
     intro x
     let x' := x.exists_rep
@@ -658,22 +656,13 @@ class ERing (α : Type u) extends (Add α), (Mul α), (CommRing α) where
   exp_zero : (exp (base 0))  = base 1
 
 
-
-noncomputable instance : ERing FreeExpRing where
+instance : ERing FreeExpRing where
   base := FreeExpRing.of ∘ ExpRingTerm.base
   exp :=  Exp.exp
-  add_assoc := my_add_assoc
+  add_assoc := add_assoc
   add_comm := my_add_comm
-  zero_add := by
-    intro a
-    let a' := a.exists_rep
-    rcases a' with ⟨a', ha⟩
-    have h1 : ⟦ExpRingTerm.base 0 + a'⟧ = 0 + a := by
-      rw [← ha]
-      rfl
-    rw [← h1, ← ha]
-    exact Quotient.sound (ExpRingTerm.Rel.zero_add a')
-  add_zero := my_add_zero
+  zero_add := zero_add
+  add_zero := add_zero
   nsmul:= fun n x => (FreeExpRing.of (ExpRingTerm.base n)) * x
   nsmul_zero := by
     intro x
@@ -845,3 +834,63 @@ noncomputable instance : ERing FreeExpRing where
     apply my_mul_neg
     exact a'
     exact a'
+
+
+
+#check FreeExpRing
+
+instance : Algebra ℤ FreeExpRing where
+  smul :=  fun n x => (FreeExpRing.of (ExpRingTerm.base n)) * x
+  algebraMap := {
+    toFun := fun n => FreeExpRing.of (ExpRingTerm.base n),
+    map_one' := by
+      dsimp
+      rfl
+    map_mul' := by
+      intros x y
+      dsimp
+      apply Quotient.sound
+      apply ExpRingTerm.Rel.mul_hom
+    map_zero' := by
+      dsimp
+      rfl
+    map_add' := by
+      intros x y
+      dsimp
+      apply Quotient.sound
+      apply ExpRingTerm.Rel.add_hom
+  }
+  commutes':=by
+      intro n x
+      dsimp
+      rw[mul_comm]
+  smul_def':=by
+      intro n x
+      dsimp
+      rfl
+
+#check IsAlgebraic
+
+open Polynomial
+
+lemma ne_zero_of_eq_my (a : ℤ[X]): (a = X-3) →  a ≠ 0 := by
+  intro h
+  rw[h]
+  apply support_nonempty.1
+  use 1
+  simp
+
+
+#eval (aeval (FreeExpRing.of (base (3:ℤ)))) (3: ℤ[X])
+
+
+theorem fuffa1: IsAlgebraic ℤ (FreeExpRing.of (ExpRingTerm.base 3)) :=by
+  constructor
+  constructor
+  apply ne_zero_of_eq_my
+  rfl
+  simp
+  have h:  (algebraMap ℤ FreeExpRing 3)= FreeExpRing.of (ExpRingTerm.base 3) := by
+    rfl
+  have h1: ((aeval (FreeExpRing.of (base (3:ℤ)))) (3: ℤ[X])) = (algebraMap ℤ FreeExpRing 3) :=by
+    simp
