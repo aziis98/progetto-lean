@@ -1,3 +1,8 @@
+import Mathlib.MeasureTheory.Integral.IntervalIntegral
+import Mathlib.Analysis.Calculus.Deriv.ZPow
+import Mathlib.Analysis.NormedSpace.Pointwise
+import Mathlib.Analysis.SpecialFunctions.NonIntegrable
+import Mathlib.Analysis.Analytic.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Order.CauSeq.Completion
 import Mathlib.Algebra.Polynomial.AlgebraMap
@@ -109,9 +114,9 @@ instance instSetoid : Setoid ExpRingTerm := ⟨
   ExpRingTerm.Rel,
   refl, symm, Trans.trans
 ⟩
-
+@[simp]
 def FreeExpRing := Quotient (inferInstanceAs (Setoid ExpRingTerm))
-
+@[simp]
 def FreeExpRing.of (x : ExpRingTerm) : FreeExpRing :=
   Quotient.mk instSetoid x
 
@@ -172,7 +177,7 @@ instance : Exp FreeExpRing where
     exact ExpRingTerm.Rel.exp_fun a b h
   )
 
-
+@[simp]
 lemma neg_scalar (a :ℤ ) :(- ExpRingTerm.base a).Rel (ExpRingTerm.base (- a)) := by
 
   have h: (- ExpRingTerm.base a).Rel ((ExpRingTerm.base (-1)) * (ExpRingTerm.base a)):=by
@@ -187,7 +192,6 @@ lemma neg_scalar (a :ℤ ) :(- ExpRingTerm.base a).Rel (ExpRingTerm.base (- a)) 
   apply ExpRingTerm.Rel.mul_hom
   apply ExpRingTerm.Rel.symm
   exact h1
-
 
 
 
@@ -220,22 +224,14 @@ lemma my_add_zero (a : FreeExpRing) : a + FreeExpRing.of (ExpRingTerm.base 0) = 
   by
     have h1 : a + FreeExpRing.of (ExpRingTerm.base 0) = a := by
       let a' := a.exists_rep
-
       rcases a' with ⟨a', ha⟩
-
       rw [← ha]
-
       apply Quotient.sound
       apply ExpRingTerm.Rel.add_zero
-
     rw [← h1]
-
     let a' := a.exists_rep
-
     rcases a' with ⟨a', ha⟩
-
     rw [← ha]
-
     apply Quotient.sound
     apply ExpRingTerm.Rel.add_zero
 
@@ -863,7 +859,21 @@ instance : Algebra ℤ FreeExpRing where
   commutes':=by
       intro n x
       dsimp
-      rw[mul_comm]
+      let x' := x.exists_rep
+      rcases x' with ⟨x', hx⟩
+      rw [← hx]
+      have h1 : FreeExpRing.of (ExpRingTerm.base n * x') = FreeExpRing.of (ExpRingTerm.base n) * FreeExpRing.of x' := by
+        rfl
+      repeat rw[fuffa]
+      rw[← h1]
+      have h2: FreeExpRing.of (ExpRingTerm.base n) * FreeExpRing.of x' = FreeExpRing.of x' * FreeExpRing.of (ExpRingTerm.base n) := by
+        apply Quotient.sound
+        apply ExpRingTerm.Rel.mul_comm
+      rw[← h2]
+      apply Quotient.sound
+      apply ExpRingTerm.Rel.symm
+      apply ExpRingTerm.Rel.refl
+
   smul_def':=by
       intro n x
       dsimp
@@ -881,7 +891,14 @@ lemma ne_zero_of_eq_my (a : ℤ[X]): (a = X-3) →  a ≠ 0 := by
   simp
 
 
-#eval (aeval (FreeExpRing.of (base (3:ℤ)))) (3: ℤ[X])
+
+/- instance: ToString ExpRingTerm where
+  toString x:= match x with
+              | (base (n : ℤ)) =>  (instToStringInt.toString n)
+              | (add a b) => "(" ++ toString a ++ " + " ++ toString b ++ ")"
+              | (mul a b) => "(" ++ toString a ++ " * " ++ toString b ++ ")"
+              | (exp a) => "exp(" ++ toString a ++ ")"
+
 
 
 theorem fuffa1: IsAlgebraic ℤ (FreeExpRing.of (ExpRingTerm.base 3)) :=by
@@ -894,3 +911,423 @@ theorem fuffa1: IsAlgebraic ℤ (FreeExpRing.of (ExpRingTerm.base 3)) :=by
     rfl
   have h1: ((aeval (FreeExpRing.of (base (3:ℤ)))) (3: ℤ[X])) = (algebraMap ℤ FreeExpRing 3) :=by
     simp
+ -/
+
+
+
+@[simp]
+noncomputable def expcast1  : (ExpRingTerm →  ℝ  ):=
+(fun x => match x with
+          |ExpRingTerm.base q => (q : ℝ)
+          |ExpRingTerm.add a b => (expcast1 a) + (expcast1 b)
+          |ExpRingTerm.mul a b => (expcast1 a) * (expcast1 b)
+          |ExpRingTerm.exp a => Real.exp (expcast1 a))
+
+
+
+
+@[simp]
+noncomputable def expcast2 : (FreeExpRing → ℝ) :=
+    Quotient.lift (expcast1) (by
+      intro a b
+      intro h
+      induction h
+      case add_fun  c d e f h1 h2  h3  h4 =>
+        have h5: (expcast1 c) + (expcast1 d) = (expcast1 e) + (expcast1 f) := by
+          rw[h3]
+          rw[h4]
+        have h6: (expcast1 (c + d))= (expcast1 c) + (expcast1 d):=by
+          rfl
+        rw[h6]
+        rw[h5]
+        rfl
+      case mul_fun c d e f h1 h2  h3  h4 =>
+        have h5: (expcast1 c) * (expcast1 d) = (expcast1 e) * (expcast1 f) := by
+          rw[h3]
+          rw[h4]
+        have h6: (expcast1 (c * d))= (expcast1 c) * (expcast1 d):=by
+          rfl
+        rw[h6]
+        rw[h5]
+        rfl
+      case exp_fun c d h1 h2 =>
+        have h3: Real.exp (expcast1 c) = expcast1 (c.exp):= by
+          rfl
+        have h4: Real.exp (expcast1 d) = expcast1 (d.exp):= by
+          rfl
+        rw[← h3]
+        rw[← h4]
+        rw[h2]
+      case refl=>
+        rfl
+      case symm a b h1 h2 =>
+        rw[h2]
+      case trans a b c h1 h2 h3 =>
+        rw[h2]
+        rw[h3]
+      case add_comm c d =>
+        have h1: (expcast1 c) + (expcast1 d) = (expcast1 d) + (expcast1 c) := by
+          rw[add_comm]
+
+        have h2: (expcast1 (c + d)) = (expcast1 c) + (expcast1 d) := by
+          rfl
+        rw[h2]
+        rw[h1]
+        rfl
+      case add_assoc c d e =>
+        have h1: (expcast1 c) + (expcast1 d) + (expcast1 e) = (expcast1 c) + ((expcast1 d) + (expcast1 e)) := by
+          rw[add_assoc]
+        have h2: (expcast1 (c + d + e)) = (expcast1 c) + (expcast1 d) + (expcast1 e) := by
+          rfl
+        rw[h2]
+        rw[h1]
+        rfl
+
+      case mul_comm c d =>
+        have h1: (expcast1 c) * (expcast1 d) = (expcast1 d) * (expcast1 c) := by
+          rw[mul_comm]
+
+        have h2: (expcast1 (c * d)) = (expcast1 c) * (expcast1 d) := by
+          rfl
+        rw[h2]
+        rw[h1]
+        rfl
+      case mul_assoc c d e =>
+        have h1: (expcast1 c) * (expcast1 d) * (expcast1 e) = (expcast1 c) * ((expcast1 d) * (expcast1 e)) := by
+          rw[mul_assoc]
+        have h2: (expcast1 (c * d * e)) = (expcast1 c) * (expcast1 d) * (expcast1 e) := by
+          rfl
+        rw[h2]
+        rw[h1]
+        rfl
+      case add_zero c =>
+
+        have h2: (expcast1 (base 0)) =  Int.cast 0 := by
+            rfl
+        have h3: (expcast1 (c+ base 0)) = (expcast1 c) + (expcast1 (base 0)) := by
+          rfl
+        rw[h3]
+        rw[h2]
+        have h4: (Int.cast 0) = (0:ℝ ) := by
+          simp
+        rw[h4]
+        simp
+      case zero_add c =>
+
+        have h2: (expcast1 (base 0)) =  Int.cast 0 := by
+            rfl
+        have h3: (expcast1 (base 0 + c )) =  (expcast1 (base 0)) +(expcast1 c) := by
+          rfl
+        rw[h3]
+        rw[h2]
+        have h4: (Int.cast 0) = (0:ℝ ) := by
+          simp
+        rw[h4]
+        simp
+      case add_inv c =>
+        have h2: (expcast1 (-c + c)) = (expcast1 (-c)) + (expcast1 c) := by
+          rfl
+        have h3: (expcast1 (-c)) = (expcast1 ((base (-1))*c)) := by
+          rfl
+        have h4: (expcast1 ((base (-1))*c)) = (expcast1 (base (-1))) * (expcast1 c) := by
+          rfl
+        have h5: (expcast1 (base (-1))) = Int.cast (-1) := by
+          rfl
+        have h6:   Int.cast (-1)  = (-1:ℝ) :=by
+          simp
+        rw[h2]
+        rw[h3]
+        rw[h4]
+        rw[h5]
+        rw[h6]
+        simp
+      case add_mul c d e =>
+        have h2: (expcast1 ((c + d) * e)) = (expcast1 (c + d)) * (expcast1 e) := by
+          rfl
+        have h3: (expcast1 (c + d)) = (expcast1 c) + (expcast1 d) := by
+          rfl
+        have h4: ((expcast1 c + expcast1 d) * expcast1 e) = (expcast1 c) * (expcast1 e) + (expcast1 d) * (expcast1 e) := by
+          apply add_mul
+        rw[h2]
+        rw[h3]
+        rw[h4]
+        rfl
+      case exp_add c d=>
+        have h2: (expcast1 (c + d)) = (expcast1 c) + (expcast1 d) := by
+          rfl
+        have h3: (Real.exp (expcast1 c + expcast1 d)) = (Real.exp (expcast1 c)) * (Real.exp (expcast1 d)) := by
+          apply Real.exp_add
+        have h4: (expcast1 (c + d).exp) = (expcast1 (c+d)).exp:= by
+            rfl
+        rw[h4]
+        rw[h2]
+        rw[h3]
+        rfl
+      case exp_zero =>
+        have h2: (expcast1 (base 0)) =  Int.cast 0 := by
+            rfl
+        have h3: (Real.exp (expcast1 (base 0))) = (Real.exp (Int.cast 0)) := by
+          rfl
+        have h4: (expcast1 (base 0).exp) = (expcast1 (base 0)).exp:= by
+            rfl
+        rw[h4]
+        rw[h2]
+        have h5: (Int.cast 0) = (0:ℝ ) := by
+          simp
+        rw[h5]
+        have h6: expcast1 (base 1) = Int.cast 1 := by
+          rfl
+        have h7: (Int.cast 1) = (1:ℝ ) := by
+          simp
+        rw[h6]
+        rw[h7]
+        simp
+      case add_hom c d=>
+        have h0: expcast1 (base (c) + base (d)) = (expcast1 (base c)) + (expcast1 (base d)) := by
+          rfl
+        have h1 (x:ℤ ): expcast1 (base (x)) = (x : ℝ) := by
+          rfl
+        rw[h0]
+        rw[h1 c,h1 d, h1 (c+d)]
+        simp
+      case mul_hom c d=>
+        have h0: expcast1 (base (c) * base (d)) = (expcast1 (base c)) * (expcast1 (base d)) := by
+          rfl
+        have h1 (x:ℤ ): expcast1 (base (x)) = (x : ℝ) := by
+          rfl
+        rw[h0]
+        rw[h1 c,h1 d, h1 (c*d)]
+        simp
+      case one_mul c=>
+        simp
+      case mul_one c=>
+        simp
+      case mul_add a b c =>
+        simp
+        rw[mul_add]
+    )
+
+
+def FreeExpRing_Real := Set.range expcast2
+
+
+
+@[simp]
+instance: ERing FreeExpRing_Real where
+  base := λ n => ⟨expcast2 (FreeExpRing.of (base n)), by
+    use FreeExpRing.of (base n)
+    ⟩
+  exp x:= ⟨Real.exp x.1, by
+    rcases x.2 with ⟨a, ha⟩
+    let a' := a.exists_rep
+    rcases a' with ⟨a', ha'⟩
+    use FreeExpRing.of (ExpRingTerm.exp a')
+    have h: expcast2 (FreeExpRing.of a'.exp)= Real.exp (expcast2 (FreeExpRing.of a')) := by
+      rfl
+    rw[h]
+    rw[← fuffa]
+    rw[ha']
+    rw[ha]
+    ⟩
+
+  add x y := ⟨x.1 + y.1,by
+    rcases x.2 with ⟨a, ha⟩
+    rcases y.2 with ⟨b, hb⟩
+    let a' := a.exists_rep
+    let b' := b.exists_rep
+    rcases a' with ⟨a', ha'⟩
+    rcases b' with ⟨b', hb'⟩
+    use FreeExpRing.of (ExpRingTerm.add a' b')
+    have h: expcast2 (FreeExpRing.of (a' + b')) = expcast2 (FreeExpRing.of a') + expcast2 (FreeExpRing.of b') := by
+      rfl
+    rw[← ha]
+    rw[← hb]
+    rw[fuffa] at ha'
+    rw[fuffa] at hb'
+    rw[← ha']
+    rw[← hb']
+    have h1: FreeExpRing.of (a' + b') = FreeExpRing.of (a'.add b') :=by
+      rfl
+    rw[← h1]
+    rw[h]
+  ⟩
+  mul x y := ⟨x.1 * y.1,by
+    rcases x.2 with ⟨a, ha⟩
+    rcases y.2 with ⟨b, hb⟩
+    let a' := a.exists_rep
+    let b' := b.exists_rep
+    rcases a' with ⟨a', ha'⟩
+    rcases b' with ⟨b', hb'⟩
+    use FreeExpRing.of (ExpRingTerm.mul a' b')
+    have h: expcast2 (FreeExpRing.of (a' * b')) = expcast2 (FreeExpRing.of a') * expcast2 (FreeExpRing.of b') := by
+      rfl
+    rw[← ha]
+    rw[← hb]
+    rw[fuffa] at ha'
+    rw[fuffa] at hb'
+    rw[← ha']
+    rw[← hb']
+    have h1: FreeExpRing.of (a' * b') = FreeExpRing.of (a'.mul b') :=by
+      rfl
+    rw[← h1]
+    rw[h]
+    ⟩
+  neg x := ⟨-x.1,by
+    rcases x.2 with ⟨a, ha⟩
+    let a' := a.exists_rep
+    rcases a' with ⟨a', ha'⟩
+    use FreeExpRing.of (-a')
+    have h: expcast2 (FreeExpRing.of (-a')) = - expcast2 (FreeExpRing.of a') := by
+      simp
+    simp
+    rw[← ha]
+    rw[← ha']
+    rw[fuffa]
+    rfl
+    ⟩
+  zero := ⟨0,by
+    use FreeExpRing.of (base 0)
+    simp
+    ⟩
+  one := ⟨1,by
+    use FreeExpRing.of (base 1)
+    simp
+    ⟩
+  add_assoc := by
+    intros
+    apply Subtype.eq
+    apply add_assoc
+  add_comm := by
+    intros
+    apply Subtype.eq
+    apply add_comm
+  zero_add := by
+    intros
+    apply Subtype.eq
+    apply zero_add
+  add_zero := by
+    intros
+    apply Subtype.eq
+    apply add_zero
+  nsmul := fun n x => ⟨(n : ℝ) * x.1,_⟩
+  nsmul_zero := by
+    intros
+    simp
+    apply Subtype.eq
+    rfl
+  nsmul_succ := by
+    intros
+    simp
+    apply Subtype.eq
+    simp
+    rw[add_mul]
+    rw[one_mul]
+    rfl
+  zsmul := fun n x => ⟨(n : ℝ) * x.1,_⟩
+  mul_comm :=by
+    intros
+    apply Subtype.eq
+    apply mul_comm
+  mul_assoc := by
+    intros
+    apply Subtype.eq
+    apply mul_assoc
+  one_mul := by
+    intros
+    apply Subtype.eq
+    apply one_mul
+  mul_one := by
+    intros
+    apply Subtype.eq
+    apply mul_one
+  left_distrib := by
+    intros
+    apply Subtype.eq
+    apply left_distrib
+  right_distrib := by
+    intros
+    apply Subtype.eq
+    apply right_distrib
+  zero_mul := by
+    intros
+    apply Subtype.eq
+    apply zero_mul
+  mul_zero := by
+    intros
+    apply Subtype.eq
+    apply mul_zero
+  zsmul_zero' := by
+    intros
+    simp
+    apply Subtype.eq
+    rfl
+  zsmul_succ' := by
+    intros
+    simp
+    apply Subtype.eq
+    simp
+    rw[add_mul]
+    rw[one_mul]
+    rfl
+  zsmul_neg' := by
+    intros
+    apply Subtype.eq
+    simp
+    nth_rw 3 [← neg_one_mul]
+    nth_rw 2[add_mul]
+    rw[mul_add]
+    rw[← mul_assoc,← mul_assoc]
+    rw[add_mul ]
+    ring
+  neg_add_cancel := by
+    intros
+    apply Subtype.eq
+    apply neg_add_cancel
+  exp_zero := by
+    intros
+    apply Subtype.eq
+    simp
+  base_hom := by
+    intro a b
+    apply Subtype.eq
+    simp
+    rfl
+  exp_hom := by
+    intro a b
+    apply Subtype.eq
+    simp
+    apply Real.exp_add
+
+
+noncomputable instance: RingHom FreeExpRing ℝ  where
+  toFun := expcast2
+  map_one' := by
+    have h: expcast2 (FreeExpRing.of (base 1)) = 1 := by
+      simp
+    exact h
+  map_mul' := by
+    intro a b
+    let a' := a.exists_rep
+    let b' := b.exists_rep
+    rcases a' with ⟨a', ha⟩
+    rcases b' with ⟨b', hb⟩
+    simp
+    rw[← ha]
+    rw[← hb]
+    repeat rw[fuffa]
+    rfl
+  map_add' := by
+    intro a b
+    let a' := a.exists_rep
+    let b' := b.exists_rep
+    rcases a' with ⟨a', ha⟩
+    rcases b' with ⟨b', hb⟩
+    simp
+    rw[← ha]
+    rw[← hb]
+    repeat rw[fuffa]
+    rfl
+  map_zero' := by
+    have h: expcast2 (FreeExpRing.of (base 0)) = 0 := by
+      simp
+    exact h
