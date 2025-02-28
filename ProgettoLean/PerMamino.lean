@@ -197,6 +197,12 @@ lemma neg_scalar (a :ℤ ) :(- ExpRingTerm.base a).Rel (ExpRingTerm.base (- a)) 
 
 #check FreeExpRing.of (base 1) + (Exp.exp (FreeExpRing.of (ExpRingTerm.base 1)))
 
+
+
+lemma fuffa (a: ExpRingTerm) : ⟦a⟧ = FreeExpRing.of a := by
+  rfl
+
+
 lemma my_add_assoc (a b c : FreeExpRing) : (a + b) + c = a + (b + c) := by
     let a' := a.exists_rep
     let b' := b.exists_rep
@@ -461,16 +467,17 @@ instance : AddCommMonoid FreeExpRing where
   nsmul_succ := by
     intro n x
 
-    dsimp
+    simp
 
     let x' := x.exists_rep
     rcases x' with ⟨x', hx⟩
     rw [← hx]
 
-    have h  : FreeExpRing.of (ExpRingTerm.base (n + 1 : ℕ)) = FreeExpRing.of (ExpRingTerm.base n) + FreeExpRing.of (ExpRingTerm.base 1) := by
+    have h  : FreeExpRing.of (ExpRingTerm.base (n + 1 )) = FreeExpRing.of (ExpRingTerm.base n) + FreeExpRing.of (ExpRingTerm.base 1) := by
       apply Quotient.sound
-      zify
+
       apply ExpRingTerm.Rel.add_hom
+    rw[fuffa]
 
     rw [h]
 
@@ -482,7 +489,7 @@ instance : AddCommMonoid FreeExpRing where
     rw [my_add_mul]
     have h2: FreeExpRing.of (ExpRingTerm.base n) * FreeExpRing.of (x')= FreeExpRing.of (ExpRingTerm.base n * x') := by
       rfl
-
+    rw[fuffa]
     rw [h2]
 
     have h3 : FreeExpRing.of (ExpRingTerm.base 1 * x') = FreeExpRing.of x' := by
@@ -490,12 +497,6 @@ instance : AddCommMonoid FreeExpRing where
       apply ExpRingTerm.Rel.one_mul
 
     rw [h3]
-
-
-
-lemma fuffa (a: ExpRingTerm) : ⟦a⟧ = FreeExpRing.of a := by
-  rfl
-
 
 
 lemma Quotient_mul (a b: FreeExpRing) : Quotient.out (a*b) ≈ (Quotient.out a)*(Quotient.out b)  := by
@@ -612,11 +613,11 @@ instance : Ring FreeExpRing where
       apply Quotient.sound
       apply ExpRingTerm.Rel.add_hom
     zify
+    simp only [fuffa]
     rw[h1]
     have h2: (FreeExpRing.of (ExpRingTerm.base n ) + FreeExpRing.of (ExpRingTerm.base 1)) * (FreeExpRing.of a') = FreeExpRing.of (base ↑n) * (FreeExpRing.of a')+ FreeExpRing.of (base 1) * (FreeExpRing.of a') := by
       repeat rw[← fuffa]
       rw[my_add_mul1]
-    repeat rw[fuffa]
     rw[h2]
     rw[my_one_mul]
 
@@ -778,8 +779,10 @@ instance : ERing FreeExpRing where
     have h3: (FreeExpRing.of x')= ⟦x'⟧:=by
       rfl
     rw[← h3]
+    rw[fuffa]
     rw[h1]
     rw[h2]
+    simp
   zsmul_zero':= by
     intro x
     let x' := x.exists_rep
@@ -808,8 +811,10 @@ instance : ERing FreeExpRing where
     have h3: (FreeExpRing.of x')= ⟦x'⟧:=by
       rfl
     rw[← h3]
+    rw[fuffa]
     rw[h1]
     rw[h2]
+    simp
   zsmul_neg':=by
     intro n a
     dsimp
@@ -1113,7 +1118,7 @@ def FreeExpRing_Real := Set.range expcast2
 
 
 @[simp]
-instance: ERing FreeExpRing_Real where
+noncomputable instance: ERing FreeExpRing_Real where
   base := λ n => ⟨expcast2 (FreeExpRing.of (base n)), by
     use FreeExpRing.of (base n)
     ⟩
@@ -1209,7 +1214,18 @@ instance: ERing FreeExpRing_Real where
     intros
     apply Subtype.eq
     apply add_zero
-  nsmul := fun n x => ⟨(n : ℝ) * x.1,_⟩
+  nsmul := fun n x => ⟨(n : ℝ) * x.1,by
+    rcases x.2 with ⟨a, ha⟩
+    let a' := a.exists_rep
+    rcases a' with ⟨a', ha'⟩
+    use FreeExpRing.of (base n * a')
+    have h: expcast2 (FreeExpRing.of (base n * a')) = (n : ℝ) * expcast2 (FreeExpRing.of a') := by
+      rfl
+    rw[← ha]
+    rw[← ha']
+    rw[fuffa]
+    rw[h]
+    ⟩
   nsmul_zero := by
     intros
     simp
@@ -1223,7 +1239,18 @@ instance: ERing FreeExpRing_Real where
     rw[add_mul]
     rw[one_mul]
     rfl
-  zsmul := fun n x => ⟨(n : ℝ) * x.1,_⟩
+  zsmul := fun n x => ⟨(n : ℝ) * x.1,by
+    rcases x.2 with ⟨a, ha⟩
+    let a' := a.exists_rep
+    rcases a' with ⟨a', ha'⟩
+    use FreeExpRing.of (base n * a')
+    have h: expcast2 (FreeExpRing.of (base n * a')) = (n : ℝ) * expcast2 (FreeExpRing.of a') := by
+      rfl
+    rw[← ha]
+    rw[← ha']
+    rw[fuffa]
+    rw[h]
+    ⟩
   mul_comm :=by
     intros
     apply Subtype.eq
