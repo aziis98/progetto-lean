@@ -7,7 +7,8 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Order.CauSeq.Completion
 import Mathlib.Algebra.Polynomial.AlgebraMap
 import Mathlib.RingTheory.Algebraic.Defs
-
+import Mathlib.RingTheory.Algebraic.Basic
+import Mathlib.RingTheory.AlgebraicIndependent.Defs
 
 inductive ExpRingTerm  where
   | base : ℤ → ExpRingTerm
@@ -886,37 +887,9 @@ instance : Algebra ℤ FreeExpRing where
 
 #check IsAlgebraic
 
-open Polynomial
-
-lemma ne_zero_of_eq_my (a : ℤ[X]): (a = X-3) →  a ≠ 0 := by
-  intro h
-  rw[h]
-  apply support_nonempty.1
-  use 1
-  simp
 
 
 
-/- instance: ToString ExpRingTerm where
-  toString x:= match x with
-              | (base (n : ℤ)) =>  (instToStringInt.toString n)
-              | (add a b) => "(" ++ toString a ++ " + " ++ toString b ++ ")"
-              | (mul a b) => "(" ++ toString a ++ " * " ++ toString b ++ ")"
-              | (exp a) => "exp(" ++ toString a ++ ")"
-
-
-
-theorem fuffa1: IsAlgebraic ℤ (FreeExpRing.of (ExpRingTerm.base 3)) :=by
-  constructor
-  constructor
-  apply ne_zero_of_eq_my
-  rfl
-  simp
-  have h:  (algebraMap ℤ FreeExpRing 3)= FreeExpRing.of (ExpRingTerm.base 3) := by
-    rfl
-  have h1: ((aeval (FreeExpRing.of (base (3:ℤ)))) (3: ℤ[X])) = (algebraMap ℤ FreeExpRing 3) :=by
-    simp
- -/
 
 
 
@@ -1358,3 +1331,39 @@ noncomputable instance: RingHom FreeExpRing ℝ  where
     have h: expcast2 (FreeExpRing.of (base 0)) = 0 := by
       simp
     exact h
+
+
+
+
+
+open Polynomial
+
+lemma ne_zero_of_eq_my (a : ℤ[X]): (a = X-3) →  a ≠ 0 := by
+  intro h
+  rw[h]
+  apply support_nonempty.1
+  use 1
+  simp
+
+theorem X_sub_C_ne_zero1 (r : ℤ ) : X - C r ≠ 0 :=
+  pow_one (X : ℤ[X]) ▸  X_pow_sub_C_ne_zero zero_lt_one r
+
+
+theorem FUFFA : IsAlgebraic ℤ (FreeExpRing.of (ExpRingTerm.base N)) := isAlgebraic_algebraMap N
+
+
+def SC_fun (v: ι → α ) [ERing α ] : ι ⊕ ι → α := λ x => match x with
+  | Sum.inl i => v i
+  | Sum.inr i => ERing.exp (v i)
+
+
+class Schanuel_Conjecture (α : Type) [ERing α] (ι : Type) where
+  SC : ∀ (v :ι → α), LinearIndependent ℤ v → AlgebraicIndependent ℤ  (SC_fun v)
+
+
+
+
+instance  SC_Free : Schanuel_Conjecture FreeExpRing  (Finset ℕ ) := by
+  apply Schanuel_Conjecture.mk
+  intro v
+  intro h
